@@ -1,0 +1,34 @@
+{
+  "name": "Mi Barbero",
+  "version": "1.0.0",
+  "description": "Mi Barbero es una innovadora plataforma diseñada para revolucionar la forma en que los estilistas, peluqueros y barberos gestionan sus citas y se conectan con sus clientes. Esta plataforma integral ofrece a los profesionales del sector herramientas avanzadas para gestionar su agenda, interactuar con los clientes y ofrecer una experiencia personalizada que va más allá del corte de cabello tradicional.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./src/app.js",
+    "dev": "nodemon ./src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "fs-extra": "^11.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.0",
+    "path": "^0.12.7",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "qrcode": "^1.5.3",
+    "sequelize": "^6.24.0",
+    "uuid": "^9.0.0",
+    "whatsapp-web.js": "^1.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

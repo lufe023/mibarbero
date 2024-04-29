@@ -4,6 +4,7 @@ const uuid = require("uuid");
 const Users = require("../models/users.model");
 const { hashPassword } = require("../utils/crypto");
 const Playlist = require("../models/playlist.model");
+const { getPlaylistByUser } = require("../playlist/playlist.controllers");
 
 const getAllUsers = async () => {
     const data = await Users.findAll({
@@ -21,7 +22,7 @@ const getUserById = async (id) => {
                 id: id,
                 status: true,
             },
-            include: [Playlist], // Incluye el modelo de Playlist
+            // include: [Playlist], // Incluye el modelo de Playlist
             attributes: { exclude: ["password"] }, // Excluye el campo de contraseña del usuario
         });
 

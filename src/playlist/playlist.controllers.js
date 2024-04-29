@@ -1,6 +1,8 @@
 //? Dependencies
 const uuid = require("uuid");
 const Playlist = require("../models/playlist.model");
+const axios = require("axios");
+require("dotenv").config();
 
 //creando una nueva lista
 const createPlaylist = async (data) => {
@@ -50,14 +52,60 @@ const changePlaylistName = async (playlistId, newName) => {
 //obteniendo las playList de un usuario
 const getPlaylistByUser = async (userId) => {
     try {
-        const listByUser = Playlist.findAndCountAll({
+        const listByUser = await Playlist.findAndCountAll({
             where: {
                 userId,
             },
         });
-        return listByUser;
+
+        const promises = listByUser.rows.map(async (list) => ({
+            name: list.name,
+            data: await dataFromYoutube(list), // Esperar la resolución de dataFromYoutube()
+        }));
+
+        const results = await Promise.all(promises);
+
+        return results;
     } catch (error) {
         console.error("Error al obtener la playlist:", error);
+        throw error;
+    }
+};
+
+const dataFromYoutube = async (playlist) => {
+    const videoIds = playlist.videoIds.map((video) => video.videoId);
+
+    try {
+        const response = await axios.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            {
+                params: {
+                    part: "snippet",
+                    id: videoIds.join(","),
+                    key: process.env.YOUTUBE_API,
+                },
+            }
+        );
+
+        const videosData = response.data.items.map((item) => ({
+            videoId: item.id,
+            playing: playlist.videoIds.find(
+                (video) => video.videoId === item.id && video.playing
+            )
+                ? true
+                : false,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            thumbnail: item.snippet.thumbnails.default.url,
+            publishedAt: item.snippet.publishedAt,
+            channelTitle: item.snippet.channelTitle,
+            channelId: item.snippet.channelId,
+        }));
+
+        // Devuelve solo los items relevantes
+        return videosData;
+    } catch (error) {
+        console.error("Error al obtener los datos de YouTube:", error);
         throw error;
     }
 };
@@ -85,7 +133,13 @@ const playingNow = async (id, videoId) => {
         // Guardar los cambios en la base de datos
         await playlist.save();
 
-        return playlist;
+        const youtubeData = await streaminPLayList(playlist.userId);
+
+        const data = {
+            youtubeData,
+            playlist,
+        };
+        return data;
     } catch (error) {
         console.error("Error al actualizar el estado de reproducción:", error);
         throw error;
@@ -217,15 +271,53 @@ const addVideoToList = async (playlistId, newVideoId) => {
 
 const streaminPLayList = async (userId) => {
     try {
-        const listsByUser = await Playlist.findAll({
+        const playlist = await Playlist.findOne({
             where: {
                 userId,
             },
-            order: [["updatedAt", "DESC"]], // Ordenar por updatedAt en orden descendente
+            order: [["updatedAt", "DESC"]],
         });
 
-        // Devolver solo la primera lista de reproducción (la más reciente)
-        return listsByUser[0];
+        if (!playlist) {
+            throw new Error("No se encontró ninguna playlist para el usuario");
+        }
+
+        // Obtener los videoIds de la playlist
+        const videoIds = playlist.videoIds.map((video) => video.videoId);
+
+        const playing = playlist.videoIds.filter(
+            (video) => video.playing == true
+        );
+
+        // Llamar a la API de YouTube para obtener la información de los videos
+        const response = await axios.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            {
+                params: {
+                    part: "snippet", // Parte de la respuesta que deseamos
+                    id: videoIds.join(","), // Convertimos los videoIds en una cadena separada por comas
+                    key: process.env.YOUTUBE_API, //"AIzaSyAi-AFYpYwWgvfteGrvWC-Zdv8pYb8dsZ0", // Reemplaza 'TU_API_KEY_YOUTUBE' con tu clave de API de YouTube
+                },
+            }
+        );
+
+        const videosData = response.data.items.map((item) => ({
+            videoId: item.id,
+            playing: playing[0].videoId == item.id ? true : false,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            thumbnail: item.snippet.thumbnails.default.url,
+            publishedAt: item.snippet.publishedAt,
+            channelTitle: item.snippet.channelTitle,
+            channelId: item.snippet.channelId,
+        }));
+        // Agregar la información de los videos a la playlist
+        const playlistWithVideos = {
+            ...playlist.toJSON(),
+            videos: videosData,
+        };
+
+        return playlistWithVideos;
     } catch (error) {
         console.error("Error al obtener la playlist:", error);
         throw error;

@@ -59,8 +59,11 @@ const getPlaylistByUser = async (userId) => {
         });
 
         const promises = listByUser.rows.map(async (list) => ({
+            id: list.id,
+            userId,
             name: list.name,
-            data: await dataFromYoutube(list), // Esperar la resolución de dataFromYoutube()
+            createdAt: list.createdAt,
+            videos: await dataFromYoutube(list), // Esperar la resolución de dataFromYoutube()
         }));
 
         const results = await Promise.all(promises);
@@ -296,7 +299,7 @@ const streaminPLayList = async (userId) => {
                 params: {
                     part: "snippet", // Parte de la respuesta que deseamos
                     id: videoIds.join(","), // Convertimos los videoIds en una cadena separada por comas
-                    key: process.env.YOUTUBE_API, //"AIzaSyAi-AFYpYwWgvfteGrvWC-Zdv8pYb8dsZ0", // Reemplaza 'TU_API_KEY_YOUTUBE' con tu clave de API de YouTube
+                    key: process.env.YOUTUBE_API,
                 },
             }
         );

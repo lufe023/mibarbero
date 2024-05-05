@@ -83,11 +83,24 @@ const changePlaylistNameServices = (req, res) => {
 
 //eliminar un video de la lista
 const deleteItemServices = (req, res) => {
-    const playListId = req.body.playListId;
-    const videoId = req.body.videoId;
+    const { playListId, videoId } = req.params;
 
     playlistController
         .deleteItem(playListId, videoId)
+        .then((data) => {
+            res.status(200).json(data);
+        })
+        .catch((err) => {
+            res.status(400).json({ err });
+        });
+};
+
+//eliminar un video de la lista
+const deletePlayListServices = (req, res) => {
+    const { playListId } = req.params;
+
+    playlistController
+        .deletePlaylist(playListId)
         .then((data) => {
             res.status(200).json(data);
         })
@@ -138,4 +151,5 @@ module.exports = {
     deleteItemServices,
     addVideoToListService,
     streaminPLayListService,
+    deletePlayListServices,
 };

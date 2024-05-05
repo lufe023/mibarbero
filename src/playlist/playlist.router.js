@@ -39,9 +39,16 @@ router.put(
 );
 
 router.delete(
-    "/deletevideo",
+    "/deletevideo/:playListId/:videoId",
     passport.authenticate("jwt", { session: false }),
     playlistService.deleteItemServices
+);
+
+//playListId
+router.delete(
+    "/deletelist/:playListId",
+    passport.authenticate("jwt", { session: false }),
+    playlistService.deletePlayListServices
 );
 
 router.post(

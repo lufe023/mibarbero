@@ -2,6 +2,7 @@
 const uuid = require("uuid");
 const Playlist = require("../models/playlist.model");
 const axios = require("axios");
+const { Op } = require("sequelize");
 require("dotenv").config();
 
 //creando una nueva lista
@@ -124,6 +125,9 @@ const playingNow = async (id, videoId) => {
             throw new Error("Playlist no encontrada");
         }
 
+        // Obtener la fecha y hora actual
+        const currentDate = new Date();
+
         // Reconstruir la lista de videoIds con los cambios aplicados
         const updatedVideoIds = playlist.videoIds.map((video) => ({
             ...video,
@@ -132,6 +136,9 @@ const playingNow = async (id, videoId) => {
 
         // Actualizar la lista de videoIds en la playlist
         playlist.videoIds = updatedVideoIds;
+
+        // Actualizar la fecha y hora de la última reproducción
+        playlist.lastPlay = currentDate;
 
         // Guardar los cambios en la base de datos
         await playlist.save();
@@ -217,7 +224,14 @@ const deleteItem = async (playlistId, videoId) => {
         // Guardamos los cambios en la base de datos
         await playlist.save();
 
-        return playlist;
+        const youtubeData = await streaminPLayList(playlist.userId);
+
+        const data = {
+            youtubeData,
+            playlist: playlist,
+        };
+
+        return data;
     } catch (error) {
         console.error("Error al eliminar el elemento del playlist:", error);
         throw error;
@@ -261,8 +275,15 @@ const addVideoToList = async (playlistId, newVideoId) => {
             { where: { id: playlistId } }
         );
 
+        const youtubeData = await streaminPLayList(playlist.userId);
+
+        const data = {
+            youtubeData,
+            playlist: Playlist.findByPk(playlistId),
+        };
+
         // Devolvemos la playlist actualizada
-        return await Playlist.findByPk(playlistId);
+        return await data;
     } catch (error) {
         console.error(
             "Error al añadir un video a la lista del playlist:",
@@ -277,8 +298,9 @@ const streaminPLayList = async (userId) => {
         const playlist = await Playlist.findOne({
             where: {
                 userId,
+                lastPlay: { [Op.ne]: null }, // Excluimos playlists con lastPlay igual a null
             },
-            order: [["updatedAt", "DESC"]],
+            order: [["lastPlay", "DESC"]],
         });
 
         if (!playlist) {
@@ -288,9 +310,11 @@ const streaminPLayList = async (userId) => {
         // Obtener los videoIds de la playlist
         const videoIds = playlist.videoIds.map((video) => video.videoId);
 
-        const playing = playlist.videoIds.filter(
+        // Encontrar el video actualmente reproduciéndose, o el primer video si no hay ninguno marcado como reproduciéndose
+        const playing = playlist.videoIds.find(
             (video) => video.playing == true
         );
+        const selectedVideo = playing || playlist.videoIds[0];
 
         // Llamar a la API de YouTube para obtener la información de los videos
         const response = await axios.get(
@@ -306,7 +330,7 @@ const streaminPLayList = async (userId) => {
 
         const videosData = response.data.items.map((item) => ({
             videoId: item.id,
-            playing: playing[0].videoId == item.id ? true : false,
+            playing: selectedVideo && selectedVideo.videoId == item.id, // Verificar si este es el video que se está reproduciendo
             title: item.snippet.title,
             description: item.snippet.description,
             thumbnail: item.snippet.thumbnails.default.url,
@@ -327,6 +351,26 @@ const streaminPLayList = async (userId) => {
     }
 };
 
+const deletePlaylist = async (playlistId) => {
+    try {
+        // Buscamos la playlist por su ID
+        const playlist = await Playlist.findByPk(playlistId);
+
+        // Verificamos si se encontró la playlist
+        if (!playlist) {
+            throw new Error("Playlist no encontrada");
+        }
+
+        // Eliminamos la playlist de la base de datos
+        await playlist.destroy();
+
+        return "Playlist eliminada exitosamente";
+    } catch (error) {
+        console.error("Error al eliminar la playlist:", error);
+        throw error;
+    }
+};
+
 module.exports = {
     createPlaylist,
     getPlaylistByUser,
@@ -336,4 +380,5 @@ module.exports = {
     deleteItem,
     addVideoToList,
     streaminPLayList,
+    deletePlaylist,
 };

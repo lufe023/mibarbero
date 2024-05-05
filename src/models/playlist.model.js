@@ -21,7 +21,9 @@ const Playlist = db.define("playlist", {
             key: "id",
         },
     },
-
+    lastPlay: {
+        type: DataTypes.DATE,
+    },
     // Array de IDs de vídeos de YouTube en la lista de reproducción
     videoIds: {
         type: DataTypes.ARRAY(DataTypes.JSONB), // Utiliza JSONB para almacenar objetos JSON

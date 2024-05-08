@@ -104,6 +104,7 @@ const dataFromYoutube = async (playlist) => {
             publishedAt: item.snippet.publishedAt,
             channelTitle: item.snippet.channelTitle,
             channelId: item.snippet.channelId,
+            tags: item.snippet.tags,
         }));
 
         // Devuelve solo los items relevantes
@@ -337,11 +338,24 @@ const streaminPLayList = async (userId) => {
             publishedAt: item.snippet.publishedAt,
             channelTitle: item.snippet.channelTitle,
             channelId: item.snippet.channelId,
+            tags: item.snippet.tags,
         }));
-        // Agregar la información de los videos a la playlist
+
+        videosData.find((video) => video.playing === true);
+
+        const sugerencias = await getYouTubeSuggestions(
+            (await videosData.find((video) => video.playing === true).tags)
+                ? await videosData.find((video) => video.playing === true).tags
+                : [
+                      videosData.find((video) => video.playing === true)
+                          .channelTitle,
+                  ]
+        );
+
         const playlistWithVideos = {
             ...playlist.toJSON(),
             videos: videosData,
+            sugerencias,
         };
 
         return playlistWithVideos;
@@ -367,6 +381,33 @@ const deletePlaylist = async (playlistId) => {
         return "Playlist eliminada exitosamente";
     } catch (error) {
         console.error("Error al eliminar la playlist:", error);
+        throw error;
+    }
+};
+
+// Controlador para obtener sugerencias de YouTube
+const getYouTubeSuggestions = async (busqueda) => {
+    try {
+        if (busqueda) {
+            const response = await axios.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                {
+                    params: {
+                        q: busqueda.join(","),
+                        part: "snippet",
+                        maxResults: 11,
+                        type: "video", // Solo videos
+                        key: process.env.YOUTUBE_API,
+                    },
+                }
+            );
+            const relatedVideos = response.data.items;
+            return relatedVideos;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        console.error("Error al buscar videos relacionados:", error);
         throw error;
     }
 };
